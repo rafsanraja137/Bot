@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account - Art Free Income</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .card-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+            color: #555;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-item .icon {
+            font-size: 1.2rem;
+            margin-right: 1rem;
+            width: 24px;
+            text-align: center;
+        }
+        .info-item strong {
+            color: #333;
+        }
+        .uid-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .copy-btn {
+            background-color: #e9ecef;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .copy-btn:hover {
+            background-color: #dcdfe2;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #444;
+        }
+        input[type="password"] {
+            width: 95%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: white;
+            background-color: #007bff;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-logout {
+            background-color: #dc3545;
+        }
+        .btn-logout:hover {
+            background-color: #c82333;
+        }
+        .language-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .home-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Profile Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>My Profile</h2>
+            </div>
+            <div class="info-item">
+                <span class="icon">📱</span>
+                <strong>Phone:</strong>&nbsp;<span id="user-phone">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="icon">🆔</span>
+                <div class="uid-container">
+                    <span><strong>UID:</strong>&nbsp;<span id="user-uid">Loading...</span></span>
+                    <button class="copy-btn" onclick="copyUID()">Copy</button>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="icon">💰</span>
+                <strong>Balance:</strong>&nbsp;৳<span id="user-balance">0.00</span>
+            </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Settings</h2>
+            </div>
+            <div class="password-change">
+                <h4>Change Password</h4>
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password" placeholder="Enter new password">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password</label>
+                    <input type="password" id="confirm-password" placeholder="Confirm new password">
+                </div>
+                <button class="btn" onclick="changePassword()">Update Password</button>
+            </div>
+            <hr style="border: 1px solid #eee; margin: 2rem 0;">
+            <div class="language-toggle">
+                <h4>Language</h4>
+                <span>English / বাংলা</span>
+            </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="card">
+            <button class="btn btn-logout" onclick="logout()">Logout</button>
+            <a href="home.html" class="home-link">Back to Home</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+        let currentUser = null;
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-uid').innerText = user.uid;
+                const userRef = database.ref('users/' + user.uid);
+                userRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        document.getElementById('user-phone').innerText = data.phone;
+                        document.getElementById('user-balance').innerText = (data.balance || 0).toFixed(2);
+                    }
+                });
+            } else {
+                window.location.href = 'login_register.html';
+            }
+        });
+
+        function copyUID() {
+            const uid = document.getElementById('user-uid').innerText;
+            navigator.clipboard.writeText(uid).then(() => {
+                alert('User ID copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy ID.');
+            });
+        }
+
+        function changePassword() {
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (newPassword.length < 6) {
+                alert("Password should be at least 6 characters long.");
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                alert("Passwords do not match. Please try again.");
+                return;
+            }
+
+            currentUser.updatePassword(newPassword).then(() => {
+                alert("Password updated successfully!");
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            }).catch((error) => {
+                alert("Error updating password: " + error.message);
+            });
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'login_register.html';
+            }).catch((error) => {
+                alert("Logout Error: " + error.message);
+            });
+        }
+    </script>
+
+</body>
+</html>

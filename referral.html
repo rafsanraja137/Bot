@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral - Art Free Income</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+        }
+        .referral-code {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            word-wrap: break-word;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .home-link {
+            display: block;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Your Referral Code</h2>
+        <p>Share this code with your friends. When they register using your code, you earn rewards!</p>
+        <div class="referral-code" id="referral-code">Loading...</div>
+        <button onclick="copyCode()">Copy Code</button>
+        <a href="home.html" class="home-link">Back to Home</a>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // The user's UID is their referral code
+                document.getElementById('referral-code').innerText = user.uid;
+            } else {
+                window.location.href = 'login_register.html';
+            }
+        });
+
+        function copyCode() {
+            const code = document.getElementById('referral-code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Referral code copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy code.');
+            });
+        }
+    </script>
+
+</body>
+</html>

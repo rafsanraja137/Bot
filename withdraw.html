@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdraw - Art Free Income</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; padding: 1rem; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .balance { font-size: 1.2rem; text-align: center; margin-bottom: 1.5rem; font-weight: bold; }
+        /* New Styles for Requirements Box */
+        .requirements { background-color: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; }
+        .requirements h4 { margin-top: 0; text-align: center; }
+        .requirements p { margin: 0.5rem 0; display: flex; justify-content: space-between; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+        input, select { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 0.85rem; border: none; border-radius: 8px; background-color: #007bff; color: white; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.3s; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .home-link { display: block; text-align: center; margin-top: 1rem; color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Withdraw Funds</h2>
+        <div class="balance">Your Balance: <span id="current-balance">Loading...</span></div>
+
+        <!-- Requirements Display Box (New) -->
+        <div class="requirements">
+            <h4>Withdrawal Requirements</h4>
+            <p><span>Minimum Balance:</span> <strong id="min-balance-req">Loading...</strong></p>
+            <p><span>Your Referrals:</span> <strong><span id="user-referrals-current">...</span> / <span id="min-referrals-req">...</span></strong></p>
+        </div>
+
+        <div class="form-group">
+            <label for="payment-method">Payment Method</label>
+            <select id="payment-method">
+                <option value="bKash">bKash</option>
+                <option value="Nagad">Nagad</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="account-number">Your Personal Number</label>
+            <input type="text" id="account-number" placeholder="e.g., 01712345678" required>
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount</label>
+            <input type="number" id="amount" placeholder="Enter amount to withdraw" required>
+        </div>
+        <button id="withdraw-btn" onclick="requestWithdrawal()" disabled>Check Eligibility...</button>
+        <a href="home.html" class="home-link">Back to Home</a>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+        
+        let currentUser = null;
+        let userBalance = 0;
+        let userReferralCount = 0;
+        let withdrawalSettings = { minBalance: Infinity, minReferrals: Infinity };
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                loadPageData(user.uid);
+            } else {
+                window.location.href = 'login_register.html';
+            }
+        });
+
+        async function loadPageData(userId) {
+            const settingsRef = database.ref('settings/withdrawal');
+            const userRef = database.ref('users/' + userId);
+
+            try {
+                // Fetch both settings and user data at the same time for reliability
+                const [settingsSnapshot, userSnapshot] = await Promise.all([
+                    settingsRef.once('value'),
+                    userRef.once('value')
+                ]);
+
+                // Process settings from admin panel
+                const settings = settingsSnapshot.val() || { minBalance: 0, minReferrals: 0 };
+                withdrawalSettings.minBalance = settings.minBalance;
+                withdrawalSettings.minReferrals = settings.minReferrals;
+
+                // Process user data
+                const userData = userSnapshot.val() || { balance: 0, referralCount: 0 };
+                userBalance = userData.balance;
+                userReferralCount = userData.referralCount;
+
+                // Update the UI with all the loaded data
+                document.getElementById('current-balance').innerText = `৳${userBalance.toFixed(2)}`;
+                document.getElementById('min-balance-req').innerText = `৳${withdrawalSettings.minBalance}`;
+                document.getElementById('user-referrals-current').innerText = userReferralCount;
+                document.getElementById('min-referrals-req').innerText = withdrawalSettings.minReferrals;
+
+                // Finally, check if the user is eligible to withdraw
+                checkWithdrawalEligibility();
+
+            } catch (error) {
+                console.error("Failed to load page data:", error);
+                alert("Could not load withdrawal requirements. Please try again.");
+            }
+        }
+
+        function checkWithdrawalEligibility() {
+            const withdrawBtn = document.getElementById('withdraw-btn');
+            const isEligible = userBalance >= withdrawalSettings.minBalance && userReferralCount >= withdrawalSettings.minReferrals;
+
+            if (isEligible) {
+                withdrawBtn.disabled = false;
+                withdrawBtn.innerText = 'Request Withdrawal';
+            } else {
+                withdrawBtn.disabled = true;
+                withdrawBtn.innerText = 'Requirements Not Met';
+            }
+        }
+
+        function requestWithdrawal() {
+            // This function remains exactly as you provided, but we add a final check
+            if (userBalance < withdrawalSettings.minBalance || userReferralCount < withdrawalSettings.minReferrals) {
+                alert("You do not meet the withdrawal requirements.");
+                return;
+            }
+
+            const method = document.getElementById('payment-method').value;
+            const number = document.getElementById('account-number').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid amount.");
+                return;
+            }
+            if (amount > userBalance) {
+                alert("Insufficient balance for the requested amount.");
+                return;
+            }
+            if (number.trim().length < 11) {
+                alert("Please enter a valid account number.");
+                return;
+            }
+
+            const newBalance = userBalance - amount;
+            const withdrawalId = database.ref().child('withdrawals').push().key;
+
+            const withdrawalData = {
+                userId: currentUser.uid,
+                method: method,
+                accountNumber: number,
+                amount: amount,
+                status: 'pending',
+                requestedAt: new Date().toISOString()
+            };
+
+            const updates = {};
+            updates['/withdrawals/' + withdrawalId] = withdrawalData;
+            updates['/users/' + currentUser.uid + '/balance'] = newBalance;
+
+            database.ref().update(updates)
+                .then(() => {
+                    alert('Withdrawal request submitted successfully!');
+                    document.getElementById('amount').value = '';
+                    // Reload data to reflect new balance and re-check eligibility
+                    loadPageData(currentUser.uid);
+                })
+                .catch((error) => {
+                    alert('Error submitting request: ' + error.message);
+                });
+        }
+    </script>
+
+</body>
+</html>

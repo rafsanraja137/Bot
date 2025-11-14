@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Register - Art Free Income</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box; /* Important for padding */
+        }
+        .password-container {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+        }
+        button {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .toggle-form {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .toggle-form a {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        #register-form {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Login Form -->
+        <div id="login-form">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="login-phone">Phone Number</label>
+                <input type="text" id="login-phone" required>
+            </div>
+            <div class="form-group password-container">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" required>
+                <span class="toggle-password" onclick="togglePasswordVisibility('login-password')">👁️</span>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center;">
+                <input type="checkbox" id="remember-me" style="width: auto; margin-right: 8px;">
+                <label for="remember-me" style="margin-bottom: 0;">Remember Me</label>
+            </div>
+            <button onclick="loginUser()">Login</button>
+            <div class="toggle-form">
+                <p>Don't have an account? <a onclick="showRegisterForm()">Register now</a></p>
+            </div>
+        </div>
+
+        <!-- Registration Form -->
+        <div id="register-form">
+            <h2>Register</h2>
+            <div class="form-group">
+                <label for="register-phone">Phone Number</label>
+                <input type="text" id="register-phone" required>
+            </div>
+            <div class="form-group password-container">
+                <label for="register-password">Password</label>
+                <input type="password" id="register-password" required>
+                 <span class="toggle-password" onclick="togglePasswordVisibility('register-password')">👁️</span>
+            </div>
+            <div class="form-group">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" required>
+            </div>
+            <div class="form-group">
+                <label for="invitation-code">Invitation Code (Required)</label>
+                <input type="text" id="invitation-code" required>
+            </div>
+            <button onclick="registerUser()">Register</button>
+            <div class="toggle-form">
+                <p>Already have an account? <a onclick="showLoginForm()">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        function showRegisterForm() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+        }
+
+        function showLoginForm() {
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+        }
+
+        function togglePasswordVisibility(id) {
+            const passwordInput = document.getElementById(id);
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
+        }
+
+        // --- Updated Registration Logic ---
+        function registerUser() {
+            const phone = document.getElementById('register-phone').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const invitationCode = document.getElementById('invitation-code').value.trim(); // This is the referrer's UID
+
+            if (!phone || !password || !invitationCode) {
+                alert("Please fill in all required fields.");
+                return;
+            }
+            if (password.length < 6) {
+                alert("Password must be at least 6 characters long.");
+                return;
+            }
+            if (password !== confirmPassword) {
+                alert("Passwords do not match.");
+                return;
+            }
+
+            // Step 1: Check if the invitation code (referrer's UID) is valid
+            database.ref('users/' + invitationCode).once('value').then(snapshot => {
+                if (!snapshot.exists()) {
+                    alert("Invalid Invitation Code. Please check the code and try again.");
+                    return;
+                }
+
+                // Step 2: If code is valid, proceed with creating the new user
+                const email = phone + "@artfreeincome.com";
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        const newUser = userCredential.user;
+                        
+                        // Step 3: Save the new user's data
+                        database.ref('users/' + newUser.uid).set({
+                            phone: phone,
+                            uid: newUser.uid,
+                            balance: 0,
+                            referralCount: 0, // New users start with 0 referrals
+                            usedInvitationCode: invitationCode, // Store who referred them
+                            createdAt: new Date().toISOString()
+                        });
+
+                        // Step 4: Increment the referrer's referralCount using a transaction
+                        const referrerRef = database.ref('users/' + invitationCode + '/referralCount');
+                        referrerRef.transaction(currentCount => {
+                            return (currentCount || 0) + 1;
+                        });
+
+                        alert("Registration successful! Please login.");
+                        showLoginForm();
+                    })
+                    .catch((error) => {
+                        // Handle errors like "email-already-in-use"
+                        alert("Registration Error: " + error.message);
+                    });
+
+            }).catch(error => {
+                alert("Error validating invitation code: " + error.message);
+            });
+        }
+
+        // --- Login Logic ---
+        function loginUser() {
+            const phone = document.getElementById('login-phone').value;
+            const password = document.getElementById('login-password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+            const email = phone + "@artfreeincome.com";
+
+            const persistence = rememberMe ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+            
+            auth.setPersistence(persistence)
+                .then(() => {
+                    return auth.signInWithEmailAndPassword(email, password);
+                })
+                .then(() => {
+                    window.location.href = 'home.html';
+                })
+                .catch((error) => {
+                    alert("Login Error: " + error.message);
+                });
+        }
+    </script>
+
+</body>
+</html>

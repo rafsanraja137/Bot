@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Art Free Income</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 1rem; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 1rem; background-color: #fff; }
+        .task-details strong { font-size: 1.1rem; }
+        .task-reward { font-size: 0.9rem; color: #28a745; font-weight: bold; margin-top: 4px; }
+        .task-timer { font-size: 0.9rem; color: #dc3545; font-weight: bold; margin-top: 4px; }
+        .task-actions button { padding: 0.7rem 1.4rem; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; font-size: 14px; transition: background-color 0.3s; }
+        .btn-start { background-color: #007bff; }
+        .btn-disabled { background-color: #6c757d; cursor: not-allowed; }
+        .home-link { display: block; text-align: center; margin-top: 1.5rem; color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Available Tasks</h2>
+        <div id="task-list"></div>
+        <a href="home.html" class="home-link">Back to Home</a>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+        let currentUserId = null;
+        const TASK_DURATION_HOURS = 24; // 24-hour timer
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUserId = user.uid;
+                loadAndProcessTasks();
+            } else {
+                window.location.href = 'login_register.html';
+            }
+        });
+
+        async function loadAndProcessTasks() {
+            const taskListDiv = document.getElementById('task-list');
+            taskListDiv.innerHTML = '<p>Loading tasks...</p>';
+
+            const tasksRef = database.ref('tasks');
+            const userRef = database.ref(`users/${currentUserId}`);
+
+            const tasksSnapshot = await tasksRef.once('value');
+            const userSnapshot = await userRef.once('value');
+            
+            const allTasks = tasksSnapshot.val();
+            const userData = userSnapshot.val();
+            const userTaskProgress = userData.taskProgress || {};
+            
+            let tasksToComplete = [];
+            for (const taskId in userTaskProgress) {
+                if (Date.now() >= userTaskProgress[taskId].completionTime) {
+                    tasksToComplete.push(taskId);
+                }
+            }
+
+            if (tasksToComplete.length > 0) {
+                await completeTasks(tasksToComplete, allTasks);
+                // After completion, reload everything to show the correct state
+                loadAndProcessTasks();
+                return; // Stop further rendering in this cycle
+            }
+            
+            renderTasks(allTasks, userTaskProgress);
+        }
+
+        function renderTasks(allTasks, userTaskProgress) {
+            const taskListDiv = document.getElementById('task-list');
+            taskListDiv.innerHTML = '';
+
+            if (!allTasks) {
+                taskListDiv.innerHTML = '<p>No tasks available right now.</p>';
+                return;
+            }
+
+            for (const taskId in allTasks) {
+                const task = allTasks[taskId];
+                const progress = userTaskProgress[taskId];
+                
+                const taskElement = document.createElement('div');
+                taskElement.classList.add('task-item');
+
+                let contentHTML = '';
+                if (progress && progress.status === 'inProgress') {
+                    contentHTML = `
+                        <div class="task-details">
+                            <strong>${task.name}</strong>
+                            <div class="task-reward">Reward: ৳${task.reward || 0}</div>
+                            <div class="task-timer" data-completion-time="${progress.completionTime}">Calculating...</div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn-disabled" disabled>In Progress</button>
+                        </div>
+                    `;
+                } else {
+                    contentHTML = `
+                        <div class="task-details">
+                            <strong>${task.name}</strong>
+                            <div class="task-reward">Reward: ৳${task.reward || 0}</div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn-start" onclick="startTask('${taskId}', '${task.link}')">Start Task</button>
+                        </div>
+                    `;
+                }
+                taskElement.innerHTML = contentHTML;
+                taskListDiv.appendChild(taskElement);
+            }
+            updateAllTimers();
+            setInterval(updateAllTimers, 1000);
+        }
+
+        function startTask(taskId, link) {
+            // Go to the website
+            if (link) {
+                window.open(link, '_blank');
+            }
+
+            // Set the completion time in the database
+            const completionTime = Date.now() + (TASK_DURATION_HOURS * 60 * 60 * 1000);
+            database.ref(`users/${currentUserId}/taskProgress/${taskId}`).set({
+                status: 'inProgress',
+                completionTime: completionTime
+            }).then(() => {
+                loadAndProcessTasks(); // Reload to show the new "In Progress" state
+            });
+        }
+
+        async function completeTasks(taskIds, allTasks) {
+            let totalReward = 0;
+            for (const taskId of taskIds) {
+                if (allTasks[taskId]) {
+                    totalReward += allTasks[taskId].reward || 0;
+                }
+            }
+
+            if (totalReward > 0) {
+                const userRef = database.ref(`users/${currentUserId}`);
+                await userRef.transaction(userData => {
+                    if (userData) {
+                        userData.balance = (userData.balance || 0) + totalReward;
+                        if (!userData.taskProgress) userData.taskProgress = {};
+                        taskIds.forEach(id => {
+                            delete userData.taskProgress[id]; // Make task available again
+                        });
+                    }
+                    return userData;
+                });
+                alert(`Task(s) completed! A reward of ৳${totalReward.toFixed(2)} has been added to your balance.`);
+            }
+        }
+
+        function updateAllTimers() {
+            document.querySelectorAll('.task-timer').forEach(timerEl => {
+                const completionTime = parseInt(timerEl.getAttribute('data-completion-time'));
+                const remaining = completionTime - Date.now();
+
+                if (remaining > 0) {
+                    const hours = Math.floor(remaining / (1000 * 60 * 60));
+                    const minutes = Math.floor((remaining / (1000 * 60)) % 60);
+                    const seconds = Math.floor((remaining / 1000) % 60);
+                    timerEl.innerText = `Completes in: ${hours}h ${minutes}m ${seconds}s`;
+                } else {
+                    timerEl.innerText = 'Processing...';
+                    // The main load function will handle the completion
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>```

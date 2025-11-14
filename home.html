@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Art Free Income</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1rem;
+            background-color: #f0f2f5;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .balance-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .grid-item {
+            background-color: #007bff;
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .grid-item:hover {
+            background-color: #0056b3;
+        }
+        #logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        #logout-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="balance-display">
+            Balance: ৳<span id="balance">0.00</span>
+        </div>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="grid-container">
+        <a href="task.html" class="grid-item">Tasks</a>
+        <a href="referral.html" class="grid-item">Referral</a>
+        <a href="withdraw.html" class="grid-item">Withdraw</a>
+        <a href="account.html" class="grid-item">Account</a>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+    <script>
+        // YOUR FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-6c8nN8TUj9V8km-NAVkjgoIeQ5m7_ms",
+            authDomain: "art-732d1.firebaseapp.com",
+            databaseURL: "https://art-732d1-default-rtdb.firebaseio.com",
+            projectId: "art-732d1",
+            storageBucket: "art-732d1.appspot.com",
+            messagingSenderId: "901862985233",
+            appId: "1:901862985233:web:ddfd6b7c8a57c65ef0ebb0"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // Check user auth state and fetch data
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in, fetch their balance from the database
+                const userRef = database.ref('users/' + user.uid);
+                // Use .on() for real-time updates to the balance
+                userRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.balance !== undefined) {
+                        document.getElementById('balance').innerText = data.balance.toFixed(2);
+                    }
+                });
+            } else {
+                // No user is signed in, redirect to the login page
+                console.log("No user signed in. Redirecting to login.");
+                window.location.href = 'login_register.html';
+            }
+        });
+
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                // Sign-out successful, redirect to login page.
+                window.location.href = 'login_register.html';
+            }).catch((error) => {
+                // An error happened.
+                alert("Logout Error: " + error.message);
+            });
+        }
+    </script>
+
+</body>
+</html>
